@@ -14,6 +14,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -32,6 +33,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextPaint;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -43,6 +45,7 @@ import android.widget.ImageView;
 import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Toast;
 
+import com.arlahiru.tsart.ocr.TesseractOCRService;
 import com.arlahiru.tsart.translation.GoogleTranslationServiceImpl;
 
 import org.apache.http.NameValuePair;
@@ -64,6 +67,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private float mLastX = 0;
     private float mLastY = 0;
     private float mLastZ = 0;
+    private TesseractOCRService ocrService;
 
     private File mLocation = new File(Environment.
             getExternalStorageDirectory(),"test.jpg");
@@ -94,6 +98,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         btnFlash.setOnClickListener(flashListener);
 
         mPicture = getPictureCallback();
+        //initialize ocr service
+        ocrService = new TesseractOCRService(this);
 
         GuideBox guideBox = new GuideBox(this);
 
@@ -109,8 +115,12 @@ public class MainActivity extends Activity implements SensorEventListener {
             if (mAutoFocus) {
                 mAutoFocus = false;
                 //mPreview.capturePic(mPicture);
-                new GoogleTranslationServiceImpl(MainActivity.this).execute("வர");
+                //new GoogleTranslationServiceImpl(MainActivity.this).execute("வர");
 
+                //test ocr
+                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.image3);
+                String text = ocrService.recognizeTexts(bitmap);
+                Log.i("RECOGNIZED TEXT",text);
                 mAutoFocus = true;
             }else{
                 Toast toast = Toast.makeText(myContext,"Please wait until camera auto focus",Toast.LENGTH_LONG);

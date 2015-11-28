@@ -98,8 +98,9 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
         // the preview.
         try {
             mParameters = mCamera.getParameters();
-            mParameters.set("orientation","landscape");
-            mCamera.setParameters(mParameters); // apply the changes
+            mParameters.set("orientation", "landscape");
+            //mCamera.setParameters(mParameters); // apply the changes
+            mCamera.setDisplayOrientation(90);
         } catch (Exception e) {
             e.printStackTrace();
             // older phone - doesn't support these calls
@@ -113,12 +114,18 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     public void setCameraFocus(AutoFocusCallback autoFocus){
-        Log.i(TAG, "setCameraFocus called"); // DEBUG
-        if (mCamera.getParameters().getFocusMode().equals(mCamera.getParameters().FOCUS_MODE_AUTO) ||
-                mCamera.getParameters().getFocusMode().equals(mCamera.getParameters().FOCUS_MODE_MACRO)){
-            Log.i(TAG, "Camera autoFocus called");
+        //Log.i(TAG, "setCameraFocus called"); // DEBUG
+        //if (mCamera.getParameters().getFocusMode().equals(mCamera.getParameters().FOCUS_MODE_AUTO) ||
+                //mCamera.getParameters().getFocusMode().equals(mCamera.getParameters().FOCUS_MODE_MACRO)){
+            //Log.i(TAG, "Camera autoFocus called");
             mCamera.autoFocus(autoFocus);
-        }
+        //}
+    }
+
+    public void requestFocus(AutoFocusCallback autoFocus){
+        if(mCamera == null)
+            return;
+        mCamera.autoFocus(autoFocus);
     }
 
     public void setFlash(boolean flash){

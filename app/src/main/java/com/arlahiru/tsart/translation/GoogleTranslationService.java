@@ -27,33 +27,11 @@ import java.util.List;
 /**
  * Created by lahiru on 10/28/15.
  */
-public class GoogleTranslationServiceImpl extends AsyncTask<String, Void, String>{
+public class GoogleTranslationService {
 
-    Activity parentActivity;
     private String googleApiKey="AIzaSyAvWGq9LRu5sH8e2vwUeWF4Ve8U5UhLb3s";
 
-    public GoogleTranslationServiceImpl(Activity activity) {
-        this.parentActivity = activity;
-    }
-
-    @Override
-    protected String doInBackground(String... tamilTexts) {
-        if (isNetworkConnected()) {
-            return GET(tamilTexts[0]);
-        } else {
-            return "no-network";
-        }
-    }
-
-    // onPostExecute displays the results of the AsyncTask.
-    @Override
-    protected void onPostExecute(String result) {
-        if (!result.equals("no-network")){
-            Log.i("Translated Text", result);
-            Toast.makeText(parentActivity.getBaseContext(), "Translated Text=" + result, Toast.LENGTH_LONG).show();
-        }else{
-            Toast.makeText(parentActivity.getBaseContext(), "Please enable your network connection", Toast.LENGTH_LONG).show();
-        }
+    public GoogleTranslationService(){
     }
 
     public String GET(String tamilText){
@@ -122,14 +100,5 @@ public class GoogleTranslationServiceImpl extends AsyncTask<String, Void, String
             Log.d("InputStream", e.getLocalizedMessage());
             return "json-error";
         }
-    }
-
-    public boolean isNetworkConnected(){
-        ConnectivityManager connMgr = (ConnectivityManager) parentActivity.getSystemService(Activity.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-        if (networkInfo != null && networkInfo.isConnected())
-            return true;
-        else
-            return false;
     }
 }

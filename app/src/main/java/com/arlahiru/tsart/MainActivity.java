@@ -1,14 +1,12 @@
 package com.arlahiru.tsart;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
@@ -18,64 +16,51 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
-import android.graphics.Bitmap.CompressFormat;
 import android.graphics.Typeface;
-import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.hardware.Camera.AutoFocusCallback;
-import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.TextPaint;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Toast;
 
 import com.arlahiru.tsart.ocr.TesseractOCRService;
-import com.arlahiru.tsart.translation.GoogleTranslationServiceImpl;
-
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.message.BasicNameValuePair;
 
 
 public class MainActivity extends Activity implements SensorEventListener {
 
+    private static final String TAG = "MainActivity";
     private CameraPreview mPreview;
-    private Button btnCapture, btnFlash;
+    private Button btnCapture, btnFlash, btnFocus;
     private boolean mAutoFocus = true;
     private Camera.PictureCallback mPicture;
     private boolean mFlashBoolean = false;
     private Context myContext;
+    private FocusBoxView focusBox;
     private SensorManager mSensorManager;
     private Sensor mAccel;
     private boolean mInitialized = false;
     private float mLastX = 0;
     private float mLastY = 0;
     private float mLastZ = 0;
-    private TesseractOCRService ocrService;
-
-    private File mLocation = new File(Environment.
-            getExternalStorageDirectory(),"test.jpg");
+    private TaSinlatorFacade taSinlatorFacade;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -91,21 +76,18 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         mPreview = (CameraPreview) findViewById(R.id.preview);
 
+        focusBox = (FocusBoxView) findViewById(R.id.focus_box);
+
         btnCapture = (Button) findViewById(R.id.button_capture);
         btnCapture.setOnClickListener(captureListener);
 
         btnFlash = (Button) findViewById(R.id.button_flash);
         btnFlash.setOnClickListener(flashListener);
 
+        btnFocus = (Button) findViewById(R.id.button_focus);
+        btnFocus.setOnClickListener(requestFocusListener);
+
         mPicture = getPictureCallback();
-        //initialize ocr service
-        ocrService = new TesseractOCRService(this);
-
-        GuideBox guideBox = new GuideBox(this);
-
-        //overlay guide box
-        addContentView(guideBox, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT));
-
 
     }
 
@@ -114,13 +96,13 @@ public class MainActivity extends Activity implements SensorEventListener {
         public void onClick(View v) {
             if (mAutoFocus) {
                 mAutoFocus = false;
-                //mPreview.capturePic(mPicture);
-                //new GoogleTranslationServiceImpl(MainActivity.this).execute("வர");
+                mPreview.capturePic(mPicture);
+                try {
+                    //Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.image3);
 
-                //test ocr
-                Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.image3);
-                String text = ocrService.recognizeTexts(bitmap);
-                Log.i("RECOGNIZED TEXT",text);
+                }catch (Exception e){
+                    Log.e(TAG,e.getMessage());
+                }
                 mAutoFocus = true;
             }else{
                 Toast toast = Toast.makeText(myContext,"Please wait until camera auto focus",Toast.LENGTH_LONG);
@@ -142,6 +124,13 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     };
 
+    OnClickListener requestFocusListener = new OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            mPreview.requestFocus(myAutoFocusCallback);
+        }
+    };
+
     // this is the autofocus call back
     private AutoFocusCallback myAutoFocusCallback = new AutoFocusCallback(){
 
@@ -156,24 +145,13 @@ public class MainActivity extends Activity implements SensorEventListener {
 
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
-
-                //make a new picture file
-                File pictureFile = getOutputMediaFile();
-
-                if (pictureFile == null) {
-                    return;
-                }
                 try {
-                    //write the file
-                    FileOutputStream fos = new FileOutputStream(pictureFile);
-                    fos.write(data);
-                    fos.close();
-                    Toast toast = Toast.makeText(myContext,"Picture saved: " + pictureFile.getName(), Toast.LENGTH_LONG);
-                    toast.show();
+                    Bitmap bmp = Tools.getFocusedBitmap(MainActivity.this, camera, data, focusBox.getBox());
+                    //saveBitmapToSD(bmp,"final");
+                    Log.d(TAG, "TaSinlatorFacade called");
+                    new TaSinlatorFacade(MainActivity.this).execute(bmp);
 
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -182,9 +160,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     //make picture and save to a folder
-    private static File getOutputMediaFile() {
+    private static File getOutputMediaFile(String fileName) {
         //make a new file directory inside the "sdcard" folder
-        File mediaStorageDir = new File("/sdcard/", "tsart");
+        File mediaStorageDir = new File(AppConstants.DATA_PATH);
 
         //if this "JCGCamera folder does not exist
         if (!mediaStorageDir.exists()) {
@@ -198,9 +176,28 @@ public class MainActivity extends Activity implements SensorEventListener {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File mediaFile;
         //and make a media file:
-        mediaFile = new File(mediaStorageDir.getPath() + File.separator + "IMG_" + timeStamp + ".jpg");
+        mediaFile = new File(mediaStorageDir.getPath() +File.separator+ "IMG_" +fileName+"_"+ timeStamp + ".jpg");
 
         return mediaFile;
+    }
+
+    public static void saveBitmapToSD(Bitmap bitmap, String filename){
+        try {
+            //make a new picture file
+            File pictureFile = getOutputMediaFile(filename);
+            //write the cropped image to file
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            byte[] byteArray = stream.toByteArray();
+            FileOutputStream fos = new FileOutputStream(pictureFile);
+            fos.write(byteArray);
+            fos.close();
+            Log.d(TAG, "Picture saved: " + pictureFile.getName());
+        }catch (Exception e){
+            Log.e(TAG, e.getMessage());
+            e.printStackTrace();
+        }
+
     }
 
     // just to close the app and release resources.
@@ -212,7 +209,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         return super.onKeyDown(keyCode, event);
     }
-
+    //TODO remove auto focus and implement request focus with a button
     // mainly used for autofocus to happen when the user takes a picture
     // I also use it to redraw the canvas using the invalidate() method
     // when I need to redraw things.
@@ -295,38 +292,4 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     }
 
-}
-
-   class GuideBox extends View {
-        public GuideBox(Context context) {
-            super(context);
-        }
-
-        @Override
-        protected void onDraw(Canvas canvas) {
-
-            TextPaint textPaint = new TextPaint();
-            textPaint.setTextSize(72);
-            textPaint.setTextAlign(Paint.Align.LEFT);
-            textPaint.setColor(Color.BLUE);
-            textPaint.setTypeface(Typeface.create("Arial", Typeface.BOLD));
-
-
-            Paint paint2 = new Paint();
-            paint2.setStyle(Paint.Style.FILL_AND_STROKE);
-            paint2.setColor(Color.WHITE);
-
-
-
-            int x0 = canvas.getWidth() / 2;
-            int y0 = canvas.getHeight() / 2;
-            int dx = canvas.getHeight() / 3;
-            int dy = canvas.getHeight() / 12;
-
-
-            canvas.drawRect(x0 - dx, y0 - dy, x0 + dx, y0 + dy, paint2);
-            canvas.drawText("\\u65E5\\u672C\\u8A9E", (x0 - dx)+10, (y0 - dy)+60, textPaint);
-
-            super.onDraw(canvas);
-        }
 }

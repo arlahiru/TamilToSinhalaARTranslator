@@ -29,7 +29,8 @@
         </activity>
         <activity
             android:name=".HelloJni"
-            android:label="HelloJni" >
+            android:label="HelloJni"
+            android:exported="true">
         </activity>
     </application>
 

@@ -59,6 +59,8 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
             params.setPictureSize(1024,768);
             params.setPictureFormat(PixelFormat.JPEG);
             params.setJpegQuality(85);
+            mParameters.set("orientation", "landscape");
+            mCamera.setDisplayOrientation(90);
             mCamera.setParameters(params);
         }
         catch (RuntimeException exception) {
@@ -99,7 +101,7 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
         try {
             mParameters = mCamera.getParameters();
             mParameters.set("orientation", "landscape");
-            //mCamera.setParameters(mParameters); // apply the changes
+            mCamera.setParameters(mParameters); // apply the changes
             mCamera.setDisplayOrientation(90);
         } catch (Exception e) {
             e.printStackTrace();

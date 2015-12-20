@@ -37,9 +37,14 @@ import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Toast;
 
 import com.arlahiru.tsart.ocr.TesseractOCRService;
+import com.arlahiru.tsart.textdetection.SwtTextDetectionService;
 
 
 public class MainActivity extends Activity implements SensorEventListener {
+
+    static {
+        System.loadLibrary("ccv-wrapper");
+    }
 
     private static final String TAG = "MainActivity";
     private CameraPreview mPreview;
@@ -56,6 +61,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     private float mLastY = 0;
     private float mLastZ = 0;
     private TaSinlatorFacade taSinlatorFacade;
+
+    //return array with two text lines looks like: [[23,45,100,60],[5,17,40,60]]
+    public native String[] ccvSwtDetectwords(String imagePath);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,7 +106,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 mAutoFocus = false;
                 mPreview.capturePic(mPicture);
                 try {
-                    //Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.image3);
+
 
                 }catch (Exception e){
                     Log.e(TAG,e.getMessage());
@@ -146,11 +154,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
                 try {
-                    Bitmap bmp = Tools.getFocusedBitmap(MainActivity.this, camera, data, focusBox.getBox());
-                    //saveBitmapToSD(bmp,"final");
-                    Log.d(TAG, "TaSinlatorFacade called");
-                    new TaSinlatorFacade(MainActivity.this).execute(bmp);
-
+                    //Bitmap bmp = Tools.getFocusedBitmap(MainActivity.this, camera, data, focusBox.getBox());
+                    Bitmap sceneImage = BitmapFactory.decodeByteArray(data, 0, data.length, null);
+                    String imgPath = saveBitmapToSD(sceneImage, "swt_i");
+                    SwtTextDetectionService swtService= new SwtTextDetectionService(MainActivity.this);
+                    Bitmap sceneImageWithTextdetection = swtService.getInputImageWithBoundingBoxes(imgPath);
+                    saveBitmapToSD(sceneImageWithTextdetection,"swt_o");
+                    /*Log.d(TAG, "TaSinlatorFacade called");
+                    new TaSinlatorFacade(MainActivity.this).execute(bmp);*/
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -176,12 +187,12 @@ public class MainActivity extends Activity implements SensorEventListener {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         File mediaFile;
         //and make a media file:
-        mediaFile = new File(mediaStorageDir.getPath() +File.separator+ "IMG_" +fileName+"_"+ timeStamp + ".jpg");
+        mediaFile = new File(mediaStorageDir.getPath() +File.separator+ "IMG_" +fileName+"_"+ timeStamp + ".png");
 
         return mediaFile;
     }
 
-    public static void saveBitmapToSD(Bitmap bitmap, String filename){
+    public static String saveBitmapToSD(Bitmap bitmap, String filename){
         try {
             //make a new picture file
             File pictureFile = getOutputMediaFile(filename);
@@ -193,9 +204,11 @@ public class MainActivity extends Activity implements SensorEventListener {
             fos.write(byteArray);
             fos.close();
             Log.d(TAG, "Picture saved: " + pictureFile.getName());
+            return pictureFile.getAbsolutePath();
         }catch (Exception e){
             Log.e(TAG, e.getMessage());
             e.printStackTrace();
+            return null;
         }
 
     }

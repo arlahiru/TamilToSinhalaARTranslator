@@ -10,6 +10,7 @@ import java.util.Date;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -46,6 +47,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         System.loadLibrary("ccv-wrapper");
     }
 
+    public final static String TRANSLATED_IMAGE_PATH = "com.arlahiru.tsart.TRANSLATED_IMAGE_PATH";
     private static final String TAG = "MainActivity";
     private CameraPreview mPreview;
     private Button btnCapture, btnFlash, btnFocus;
@@ -53,7 +55,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private Camera.PictureCallback mPicture;
     private boolean mFlashBoolean = false;
     private Context myContext;
-    private FocusBoxView focusBox;
+    //private FocusBoxView focusBox;
     private SensorManager mSensorManager;
     private Sensor mAccel;
     private boolean mInitialized = false;
@@ -68,7 +70,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -84,7 +86,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         mPreview = (CameraPreview) findViewById(R.id.preview);
 
-        focusBox = (FocusBoxView) findViewById(R.id.focus_box);
+        //focusBox = (FocusBoxView) findViewById(R.id.focus_box);
 
         btnCapture = (Button) findViewById(R.id.button_capture);
         btnCapture.setOnClickListener(captureListener);
@@ -159,7 +161,11 @@ public class MainActivity extends Activity implements SensorEventListener {
                     String imgPath = saveBitmapToSD(sceneImage, "swt_i");
                     SwtTextDetectionService swtService= new SwtTextDetectionService(MainActivity.this);
                     Bitmap sceneImageWithTextdetection = swtService.getInputImageWithBoundingBoxes(imgPath);
-                    saveBitmapToSD(sceneImageWithTextdetection,"swt_o");
+                    String translatedImgPath = saveBitmapToSD(sceneImageWithTextdetection,"swt_o");
+                    Intent intent = new Intent(MainActivity.this, TranslationResultActivity.class);
+                    intent.putExtra(TRANSLATED_IMAGE_PATH, translatedImgPath);
+                    startActivity(intent);
+
                     /*Log.d(TAG, "TaSinlatorFacade called");
                     new TaSinlatorFacade(MainActivity.this).execute(bmp);*/
                 } catch (Exception e) {

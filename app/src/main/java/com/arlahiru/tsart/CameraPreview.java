@@ -56,12 +56,12 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
             mCamera = Camera.open(); // WARNING: without permission in Manifest.xml, crashes
             // Setting the right parameters in the camera
             Camera.Parameters params = mCamera.getParameters();
-            params.setPictureSize(1024,768);
+            params.setPictureSize(1024, 768);
             params.setPictureFormat(PixelFormat.JPEG);
             params.setJpegQuality(85);
-            mParameters.set("orientation", "landscape");
-            mCamera.setDisplayOrientation(90);
+            params.set("orientation", "landscape");
             mCamera.setParameters(params);
+            mCamera.setDisplayOrientation(0);
         }
         catch (RuntimeException exception) {
             //Log.i(TAG, "Exception on Camera.open(): " + exception.toString());
@@ -101,8 +101,8 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
         try {
             mParameters = mCamera.getParameters();
             mParameters.set("orientation", "landscape");
-            mCamera.setParameters(mParameters); // apply the changes
-            mCamera.setDisplayOrientation(90);
+            //mCamera.setParameters(mParameters); // apply the changes
+            //mCamera.setDisplayOrientation(90);
         } catch (Exception e) {
             e.printStackTrace();
             // older phone - doesn't support these calls

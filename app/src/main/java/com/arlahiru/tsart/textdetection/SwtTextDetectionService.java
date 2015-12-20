@@ -25,7 +25,7 @@ public class SwtTextDetectionService {
 
     public Bitmap getInputImageWithBoundingBoxes(String imagePath){
 
-        String[] boundingBoxes = mainActivity.ccvSwtDetectwords("/storage/emulated/0/TaSinlator/test2.png");
+        String[] boundingBoxes = mainActivity.ccvSwtDetectwords(imagePath);
         Bitmap bmp=BitmapFactory.decodeFile(imagePath);
         Bitmap mutableBitmap = bmp.copy(Bitmap.Config.ARGB_8888, true);
         Canvas cnvs=new Canvas(mutableBitmap);

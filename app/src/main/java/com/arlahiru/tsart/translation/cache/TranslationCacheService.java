@@ -7,6 +7,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -25,15 +26,16 @@ public class TranslationCacheService {
     public TranslationCacheService() {
         cacheFile = new File(AppConstants.DATA_PATH + "cache/cache.txt");
         //load cache map for the first time
-        //loadCacheMap();
+        loadCacheMap();
     }
 
     public void cacheTranslation(String srcText,String targetText){
         try {
             //put new translation to the cache map first
             cacheMap.put(srcText,targetText);
-            //write new translation to the cache file
-            Writer out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(cacheFile), "UTF8"));
+            //append new translation to the cache file
+            FileWriter fw = new FileWriter(cacheFile,true);
+            Writer out = new BufferedWriter(fw);
             //entry - e.g src text = target text
             out.append(srcText).append("=").append(targetText).append("\n");
             out.flush();

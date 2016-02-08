@@ -1,44 +1,32 @@
 package com.arlahiru.tsart;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Typeface;
+import android.graphics.Point;
 import android.hardware.Camera;
+import android.hardware.Camera.AutoFocusCallback;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.hardware.Camera.AutoFocusCallback;
 import android.os.Bundle;
-import android.os.Environment;
-import android.text.TextPaint;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.View.OnClickListener;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Toast;
-
-import com.arlahiru.tsart.ocr.TesseractOCRService;
 import com.arlahiru.tsart.textdetection.SwtTextDetectionService;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
 
 
 public class MainActivity extends Activity implements SensorEventListener {
@@ -50,7 +38,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     public final static String TRANSLATED_IMAGE_PATH = "com.arlahiru.tsart.TRANSLATED_IMAGE_PATH";
     private static final String TAG = "MainActivity";
     private CameraPreview mPreview;
-    private Button btnCapture, btnFlash, btnFocus;
+    private Button btnCapture, btnFlash, btnFocus, btnDetect;
     private boolean mAutoFocus = true;
     private Camera.PictureCallback mPicture;
     private boolean mFlashBoolean = false;
@@ -63,8 +51,10 @@ public class MainActivity extends Activity implements SensorEventListener {
     private float mLastY = 0;
     private float mLastZ = 0;
     private TaSinlatorFacade taSinlatorFacade;
+    private boolean skipSWT = false;
+    private boolean textDetectOnly = false;
 
-    //return array with two text lines looks like: [[23,45,100,60],[5,17,40,60]]
+    //return array with two text lines looks like: [[23,45,100,60],[5,17,40,60]] format=[topx, topy, width, height]
     public native String[] ccvSwtDetectwords(String imagePath);
 
     @Override
@@ -94,6 +84,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         btnFlash = (Button) findViewById(R.id.button_flash);
         btnFlash.setOnClickListener(flashListener);
 
+        btnDetect = (Button) findViewById(R.id.button_detect);
+        btnDetect.setOnClickListener(detectListener);
+
         btnFocus = (Button) findViewById(R.id.button_focus);
         btnFocus.setOnClickListener(requestFocusListener);
 
@@ -101,15 +94,33 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     }
 
+    public OnClickListener detectListener = new OnClickListener() {
+
+        public void onClick(View v) {
+            if (mAutoFocus) {
+                mAutoFocus = false;
+                try {
+                    textDetectOnly = true;
+                    mPreview.capturePic(mPicture);
+                }catch (Exception e){
+                    Log.e(TAG,e.getMessage());
+                }
+                mAutoFocus = true;
+            }else{
+                Toast toast = Toast.makeText(myContext,"Please wait until camera auto focus",Toast.LENGTH_LONG);
+                toast.show();
+            }
+        }
+    };
+
     public OnClickListener captureListener = new OnClickListener() {
 
         public void onClick(View v) {
             if (mAutoFocus) {
                 mAutoFocus = false;
-                mPreview.capturePic(mPicture);
                 try {
-
-
+                    textDetectOnly = false;
+                    mPreview.capturePic(mPicture);
                 }catch (Exception e){
                     Log.e(TAG,e.getMessage());
                 }
@@ -156,18 +167,18 @@ public class MainActivity extends Activity implements SensorEventListener {
             @Override
             public void onPictureTaken(byte[] data, Camera camera) {
                 try {
-                    //Bitmap bmp = Tools.getFocusedBitmap(MainActivity.this, camera, data, focusBox.getBox());
+                    Log.d(TAG, "TaSinlatorFacade called");
                     Bitmap sceneImage = BitmapFactory.decodeByteArray(data, 0, data.length, null);
-                    String imgPath = saveBitmapToSD(sceneImage, "swt_i");
-                    SwtTextDetectionService swtService= new SwtTextDetectionService(MainActivity.this);
-                    Bitmap sceneImageWithTextdetection = swtService.getInputImageWithBoundingBoxes(imgPath);
-                    String translatedImgPath = saveBitmapToSD(sceneImageWithTextdetection,"swt_o");
-                    Intent intent = new Intent(MainActivity.this, TranslationResultActivity.class);
-                    intent.putExtra(TRANSLATED_IMAGE_PATH, translatedImgPath);
-                    startActivity(intent);
+                    //Bitmap sceneImage = BitmapFactory.decodeResource(MainActivity.this.getResources(), R.drawable.monday);
+                    String inputImgPath = Tools.saveBitmapToSD(sceneImage, "img_temp_i");
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    sceneImage.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    byte[] byteArray = stream.toByteArray();
+                    Point camRes = FocusBoxUtils.getCameraResolution(MainActivity.this, camera);
+                    Point screenRes = FocusBoxUtils.getScreenResolution(MainActivity.this);
+                    TaSinlatorFacadeTaskParams taSinlatorFacadeTaskParams = new TaSinlatorFacadeTaskParams(byteArray,camRes,screenRes,inputImgPath,skipSWT,textDetectOnly);
+                    new TaSinlatorFacade(MainActivity.this).execute(taSinlatorFacadeTaskParams);
 
-                    /*Log.d(TAG, "TaSinlatorFacade called");
-                    new TaSinlatorFacade(MainActivity.this).execute(bmp);*/
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -176,48 +187,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         return picture;
     }
 
-    //make picture and save to a folder
-    private static File getOutputMediaFile(String fileName) {
-        //make a new file directory inside the "sdcard" folder
-        File mediaStorageDir = new File(AppConstants.DATA_PATH);
-
-        //if this "JCGCamera folder does not exist
-        if (!mediaStorageDir.exists()) {
-            //if you cannot make this folder return
-            if (!mediaStorageDir.mkdirs()) {
-                return null;
-            }
-        }
-
-        //take the current timeStamp
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        File mediaFile;
-        //and make a media file:
-        mediaFile = new File(mediaStorageDir.getPath() +File.separator+ "IMG_" +fileName+"_"+ timeStamp + ".png");
-
-        return mediaFile;
-    }
-
-    public static String saveBitmapToSD(Bitmap bitmap, String filename){
-        try {
-            //make a new picture file
-            File pictureFile = getOutputMediaFile(filename);
-            //write the cropped image to file
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-            byte[] byteArray = stream.toByteArray();
-            FileOutputStream fos = new FileOutputStream(pictureFile);
-            fos.write(byteArray);
-            fos.close();
-            Log.d(TAG, "Picture saved: " + pictureFile.getName());
-            return pictureFile.getAbsolutePath();
-        }catch (Exception e){
-            Log.e(TAG, e.getMessage());
-            e.printStackTrace();
-            return null;
-        }
-
-    }
 
     // just to close the app and release resources.
     @Override
@@ -227,43 +196,6 @@ public class MainActivity extends Activity implements SensorEventListener {
             finish();
         }
         return super.onKeyDown(keyCode, event);
-    }
-    //TODO remove auto focus and implement request focus with a button
-    // mainly used for autofocus to happen when the user takes a picture
-    // I also use it to redraw the canvas using the invalidate() method
-    // when I need to redraw things.
-    public void onSensorChanged(SensorEvent event) {
-
-        float x = event.values[0];
-        float y = event.values[1];
-        float z = event.values[2];
-        if (!mInitialized){
-            mLastX = x;
-            mLastY = y;
-            mLastZ = z;
-            mInitialized = true;
-        }
-        float deltaX  = Math.abs(mLastX - x);
-        float deltaY = Math.abs(mLastY - y);
-        float deltaZ = Math.abs(mLastZ - z);
-
-        if (deltaX > .5 && mAutoFocus){ //AUTOFOCUS (while it is not autofocusing)
-            mAutoFocus = false;
-            mPreview.setCameraFocus(myAutoFocusCallback);
-        }
-        if (deltaY > .5 && mAutoFocus){ //AUTOFOCUS (while it is not autofocusing)
-            mAutoFocus = false;
-            mPreview.setCameraFocus(myAutoFocusCallback);
-        }
-        if (deltaZ > .5 && mAutoFocus){ //AUTOFOCUS (while it is not autofocusing) */
-            mAutoFocus = false;
-            mPreview.setCameraFocus(myAutoFocusCallback);
-        }
-
-        mLastX = x;
-        mLastY = y;
-        mLastZ = z;
-
     }
 
     // extra overrides to better understand app lifecycle and assist debugging
@@ -310,5 +242,63 @@ public class MainActivity extends Activity implements SensorEventListener {
         // TODO Auto-generated method stub
 
     }
+
+    private void runTest(){
+        try {
+            AssetManager assetManager = MainActivity.this.getAssets();
+            String[] files = assetManager.list("tamil");
+            List<String> it = Arrays.asList(files);
+            for (String file : it) {
+                InputStream imgInput = assetManager.open("tamil/"+file);
+                Bitmap sceneImage =BitmapFactory.decodeStream(imgInput);
+                //Bitmap sceneImage = BitmapFactory.decodeResource(MainActivity.this.getResources(), R.drawable._036);
+                String imgPath = Tools.saveBitmapToSD(sceneImage, file+"_i");
+                SwtTextDetectionService swtService = new SwtTextDetectionService(MainActivity.this);
+                Bitmap sceneImageWithTextdetection = swtService.getInputImageWithBoundingBoxes(imgPath);
+                String translatedImgPath = Tools.saveBitmapToSD(sceneImageWithTextdetection, file+"_o");
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    // mainly used for autofocus to happen when the user takes a picture
+    // I also use it to redraw the canvas using the invalidate() method
+    // when I need to redraw things.
+
+    public void onSensorChanged(SensorEvent event) {
+
+    /*    float x = event.values[0];
+        float y = event.values[1];
+        float z = event.values[2];
+        if (!mInitialized){
+            mLastX = x;
+            mLastY = y;
+            mLastZ = z;
+            mInitialized = true;
+        }
+        float deltaX  = Math.abs(mLastX - x);
+        float deltaY = Math.abs(mLastY - y);
+        float deltaZ = Math.abs(mLastZ - z);
+
+        if (deltaX > .5 && mAutoFocus){ //AUTOFOCUS (while it is not autofocusing)
+            mAutoFocus = false;
+            mPreview.setCameraFocus(myAutoFocusCallback);
+        }
+        if (deltaY > .5 && mAutoFocus){ //AUTOFOCUS (while it is not autofocusing)
+            mAutoFocus = false;
+            mPreview.setCameraFocus(myAutoFocusCallback);
+        }
+        if (deltaZ > .5 && mAutoFocus){ //AUTOFOCUS (while it is not autofocusing) *//*
+            mAutoFocus = false;
+            mPreview.setCameraFocus(myAutoFocusCallback);
+        }
+
+        mLastX = x;
+        mLastY = y;
+        mLastZ = z;*/
+
+    }
+
 
 }

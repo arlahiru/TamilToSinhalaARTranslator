@@ -40,4 +40,9 @@ public class ApplicationTest extends ApplicationTestCase<Application> {
         }
         assertNotNull(clusters);
     }
+
+    @SmallTest
+    public void testTranslation() {
+
+    }
 }

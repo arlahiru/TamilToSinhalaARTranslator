@@ -54,22 +54,13 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
         // The Surface has been created, acquire the camera and tell it where to draw.
         try {
             mCamera = Camera.open(); // WARNING: without permission in Manifest.xml, crashes
-            // Setting the right parameters in the camera
-            Camera.Parameters params = mCamera.getParameters();
-            params.setPictureSize(1024, 768);
-            params.setPictureFormat(PixelFormat.JPEG);
-            params.setJpegQuality(85);
-            params.set("orientation", "landscape");
-            mCamera.setParameters(params);
-            mCamera.setDisplayOrientation(0);
-        }
-        catch (RuntimeException exception) {
-            //Log.i(TAG, "Exception on Camera.open(): " + exception.toString());
-            Toast.makeText(getContext(), "Camera broken, quitting :(",Toast.LENGTH_LONG).show();
-            // TODO: exit program
-        }
-
-        try {
+            mParameters = mCamera.getParameters();
+            mParameters.setPictureFormat(PixelFormat.JPEG);
+            mParameters.setJpegQuality(100);
+            mParameters.set("orientation", "landscape");
+            mParameters.setPreviewSize(1920,1080);
+            mParameters.setPictureSize(800,600);
+            mCamera.setParameters(mParameters);
             mCamera.setPreviewDisplay(holder);
 
         } catch (Exception exception) {
@@ -98,17 +89,22 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
         //Log.i(TAG, "Preview: surfaceChanged() - size now " + w + "x" + h);
         // Now that the size is known, set up the camera parameters and begin
         // the preview.
+        // The Surface has been created, acquire the camera and tell it where to draw.
         try {
-            mParameters = mCamera.getParameters();
-            mParameters.set("orientation", "landscape");
-            //mCamera.setParameters(mParameters); // apply the changes
-            //mCamera.setDisplayOrientation(90);
-        } catch (Exception e) {
-            e.printStackTrace();
-            // older phone - doesn't support these calls
-        }
+/*            Camera.Size myBestSize = getBestPreviewSize(w, h, mParameters);
 
-        mCamera.startPreview();
+            if(myBestSize != null) {
+                mParameters.setPreviewSize(1920,1080);
+            }
+            mCamera.setParameters(mParameters);*/
+
+            mCamera.startPreview();
+        }
+        catch (RuntimeException exception) {
+            //Log.i(TAG, "Exception on Camera.open(): " + exception.toString());
+            Toast.makeText(getContext(), "Camera broken, quitting :(",Toast.LENGTH_LONG).show();
+            // TODO: exit program
+        }
     }
 
     public Parameters getCameraParameters(){
@@ -147,5 +143,22 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
             mCamera.release();
             mCamera = null;
         }
+    }
+
+    private Camera.Size getBestPreviewSize(int width, int height, Camera.Parameters parameters){
+        Camera.Size bestSize = null;
+        List<Camera.Size> sizeList = parameters.getSupportedPreviewSizes();
+
+        bestSize = sizeList.get(0);
+
+        for(int i = 1; i < sizeList.size(); i++){
+            Log.d(TAG, "preview size-"+sizeList.get(i).width+"x"+sizeList.get(i).height);
+            if((sizeList.get(i).width * sizeList.get(i).height) >
+                    (bestSize.width * bestSize.height)){
+                bestSize = sizeList.get(i);
+            }
+        }
+
+        return bestSize;
     }
 }

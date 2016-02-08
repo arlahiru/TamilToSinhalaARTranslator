@@ -7,6 +7,13 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.arlahiru.tsart.AugmentedTextBox;
+import com.arlahiru.tsart.MainActivity;
+import com.arlahiru.tsart.TaSinlatorFacade;
+import com.arlahiru.tsart.TaSinlatorFacadeTaskParams;
+import com.arlahiru.tsart.TranslationResultActivity;
+import com.arlahiru.tsart.translation.cache.TranslationCacheService;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -29,12 +36,18 @@ import java.util.List;
  */
 public class GoogleTranslationService {
 
-    private String googleApiKey="AIzaSyAvWGq9LRu5sH8e2vwUeWF4Ve8U5UhLb3s";
+    private static final String TAG = "TranslationService";
 
-    public GoogleTranslationService(){
+    private String googleApiKey="AIzaSyAvWGq9LRu5sH8e2vwUeWF4Ve8U5UhLb3s";
+    private MainActivity mainActivity;
+    private TranslationCacheService translationCacheService;
+
+    public GoogleTranslationService(MainActivity mainActivity){
+        this.mainActivity = mainActivity;
+        translationCacheService = new TranslationCacheService();
     }
 
-    public String GET(String tamilText){
+    private String googleTranslateRestApiService(String tamilText){
         String jsonResult = "application-error";
         InputStream inputStream = null;
         try {
@@ -61,6 +74,43 @@ public class GoogleTranslationService {
             Log.d("InputStream", e.getLocalizedMessage());
         }
         return jsonResult;
+    }
+
+    public List<AugmentedTextBox> getTranslatedAugmentedTextBoxes(TaSinlatorFacadeTaskParams param,List<AugmentedTextBox> augTextBoxes){
+
+        List<AugmentedTextBox> finalAugTextBoxList = new ArrayList<AugmentedTextBox>(0);
+        for(AugmentedTextBox augBox: augTextBoxes){
+
+            //call cache service first
+            String sinhalaTranslatedText = translationCacheService.getTranslationFromCache(augBox.getSourceText());
+            //call google translation service if we do not have it in the cache
+            if (sinhalaTranslatedText == null) {
+                Log.d(TAG, "Calling Google Translation Service");
+                if (isNetworkConnected()) {
+                    sinhalaTranslatedText = googleTranslateRestApiService(augBox.getSourceText());
+                    //check if translation result is correct
+                    if (sinhalaTranslatedText.equals("application-error") || sinhalaTranslatedText.equals("json-error")) {
+                        Log.e(TAG, "Sorry! Translation error!");
+                        param.setErrorMessage("Sorry! Translation error!");
+                        return finalAugTextBoxList;
+                    } else {
+                        //cache new translation
+                        translationCacheService.cacheTranslation(augBox.getSourceText(), sinhalaTranslatedText);
+                    }
+
+                } else {
+                    Log.e(TAG, "Please enable your network connection");
+                    param.setErrorMessage("Please enable your network connection");
+                    //return "ආයුබෝවන්";
+                    return finalAugTextBoxList;
+                }
+            }
+            Log.d(TAG, "Translated Text=" + sinhalaTranslatedText);
+            augBox.setTargetText(sinhalaTranslatedText);
+            augBox.setTargetText(sinhalaTranslatedText);
+            finalAugTextBoxList.add(augBox);
+        }
+        return finalAugTextBoxList;
     }
 
     private String convertInputStreamToJsonString(InputStream inputStream) throws IOException {
@@ -101,4 +151,15 @@ public class GoogleTranslationService {
             return "json-error";
         }
     }
+
+    public boolean isNetworkConnected(){
+        ConnectivityManager connMgr = (ConnectivityManager) mainActivity.getSystemService(Activity.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+        if (networkInfo != null && networkInfo.isConnected())
+            return true;
+        else
+            return false;
+    }
+
 }
+

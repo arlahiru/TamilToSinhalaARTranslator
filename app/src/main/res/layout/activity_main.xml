@@ -7,15 +7,13 @@
 
     <com.arlahiru.tsart.CameraPreview android:id="@+id/preview"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent"/>
+        android:layout_height="fill_parent">
 
-        <!-- <com.arlahiru.tsart.FocusBoxView
-            android:id="@+id/focus_box"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent" /> -->
+    </com.arlahiru.tsart.CameraPreview>
+
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_alignParentEnd="true"
         android:orientation="vertical"
         android:layout_alignParentTop="true"
@@ -25,30 +23,43 @@
 
         <Button
             android:id="@+id/button_capture"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Translate"
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
-            android:layout_marginTop="15dp"
-            android:layout_weight="0.05" />
+            android:layout_marginTop="135dp" />
+
+        <Button
+            android:id="@+id/button_detect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Detect"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true" />
 
         <Button
             android:id="@+id/button_focus"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:text="Focus"
             android:layout_centerVertical="true"
-            android:layout_marginTop="10dp" />
+            android:layout_marginTop="15dp" />
 
         <Button
-                android:id="@+id/button_flash"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:text="Flash"
-            android:layout_below="@+id/button_focus"
-                android:layout_alignEnd="@+id/button_capture"
-            android:layout_marginTop="190dp" />
+            android:id="@+id/button_flash"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Flash" />
+
+
     </LinearLayout>
+
+
+
+        <!-- <com.arlahiru.tsart.FocusBoxView
+            android:id="@+id/focus_box"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent" /> -->
 
 </RelativeLayout>
